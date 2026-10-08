@@ -29,5 +29,5 @@ def ask(request: AskRequest):
             model=MODEL,
         )
     except APIError:
-        raise HTTPException(status_code=502, detail="Ошибка при обращении к модели")
+        raise HTTPException(status_code=502, detail="Модель не знайденв або непрацює")
     return AskResponse(answer=completion.choices[0].message.content)
