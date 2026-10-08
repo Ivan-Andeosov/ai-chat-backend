@@ -1,21 +1,33 @@
-from dotenv import load_dotenv
 import os
-from groq import Groq
+
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+from groq import APIError, Groq
+from pydantic import BaseModel
 
 load_dotenv()
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+MODEL = "openai/gpt-oss-120b"
 
-chat_completion = client.chat.completions.create(
-messages=[
-        {
-            "role": "user",
-            "content": "Explain the importance of fast language models",
-        }
-    ],
-model="openai/gpt-oss-120b",
-)
+app = FastAPI(title="ai-chat-backend")
 
-print(chat_completion.choices[0].message.content)
+
+class AskRequest(BaseModel):
+    question: str
+
+
+class AskResponse(BaseModel):
+    answer: str
+
+
+@app.post("/ask", response_model=AskResponse)
+def ask(request: AskRequest):
+    try:
+        completion = client.chat.completions.create(
+            messages=[{"role": "user", "content": request.question}],
+            model=MODEL,
+        )
+    except APIError:
+        raise HTTPException(status_code=502, detail="Ошибка при обращении к модели")
+    return AskResponse(answer=completion.choices[0].message.content)
