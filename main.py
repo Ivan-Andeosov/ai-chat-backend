@@ -1,47 +1,74 @@
 import os
 import time
 from contextlib import asynccontextmanager
-
-from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse
-from groq import APIError, Groq
-from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from datetime import datetime
 from pathlib import Path
 
+from dotenv import load_dotenv
+from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse
+from groq import APIError, Groq
+from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from chat_settings import HISTORY_LIMIT, LANGUAGE, MODEL, SYSTEM_PROMPT, USER_NAME
 from database import get_db, init_db
-from models import Chat, Message, RequestLog, utcnow
+from models import Chat, Message, RequestLog, Setting, utcnow
 
 load_dotenv()
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 PROVIDER = "groq"
-MODEL = "openai/gpt-oss-120b"
-HISTORY_LIMIT = 20  # сколько последних сообщений отправлять модели
+INDEX_FILE = Path(__file__).resolve().parent / "static" / "index.html"
+
+DEFAULT_SETTINGS = {
+    "user_name": USER_NAME,
+    "language": LANGUAGE,
+    "system_prompt": SYSTEM_PROMPT,
+}
+
+
+def load_settings(db: Session) -> dict[str, str]:
+    result = dict(DEFAULT_SETTINGS)
+    for key in DEFAULT_SETTINGS:
+        row = db.get(Setting, key)
+        if row is not None:
+            result[key] = row.value
+    return result
+
+
+def build_system_prompt(settings: dict[str, str]) -> str:
+    parts = []
+    prompt = settings["system_prompt"].strip()
+    name = settings["user_name"].strip()
+    language = settings["language"].strip()
+    if prompt:
+        parts.append(prompt)
+    if name:
+        parts.append(f"The user's name is {name}.")
+    if language:
+        parts.append(f"Always reply in this language: {language}.")
+    return "\n".join(parts)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()  # создаст таблицы, если их ещё нет
+    init_db()
     yield
 
 
 app = FastAPI(title="ai-chat-backend", lifespan=lifespan)
 
-INDEX_FILE = Path(__file__).resolve().parent / "static" / "index.html"
 
+class SettingsData(BaseModel):
+    user_name: str = Field(default="", max_length=100)
+    language: str = Field(default="", max_length=50)
+    system_prompt: str = Field(default="", max_length=4000)
 
-@app.get("/", include_in_schema=False)
-def index():
-    return FileResponse(INDEX_FILE)
-
-
-# ---------- схемы запросов и ответов ----------
 
 class ChatCreate(BaseModel):
-    title: str = "Новый чат"
+    title: str = "New chat"
 
 
 class ChatOut(BaseModel):
@@ -61,9 +88,25 @@ class MessageOut(BaseModel):
     model: str | None = None
 
 
+class LogOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    chat_id: int | None = None
+    provider: str
+    model: str
+    status: str
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
+    duration_ms: int | None = None
+    error_message: str | None = None
+    created_at: datetime
+
+
 class AskRequest(BaseModel):
     question: str
-    chat_id: int | None = None  # если не указан, создастся новый чат
+    chat_id: int | None = None
 
 
 class AskResponse(BaseModel):
@@ -71,7 +114,44 @@ class AskResponse(BaseModel):
     chat_id: int
 
 
-# ---------- чаты ----------
+@app.get("/", include_in_schema=False)
+def index():
+    return FileResponse(INDEX_FILE)
+
+
+@app.get("/settings", response_model=SettingsData)
+def get_settings(db: Session = Depends(get_db)):
+    return load_settings(db)
+
+
+@app.put("/settings", response_model=SettingsData)
+def update_settings(data: SettingsData, db: Session = Depends(get_db)):
+    for key, value in data.model_dump().items():
+        row = db.get(Setting, key)
+        if row is None:
+            db.add(Setting(key=key, value=value))
+        else:
+            row.value = value
+    db.commit()
+    return load_settings(db)
+
+
+@app.delete("/settings", response_model=SettingsData)
+def reset_settings(db: Session = Depends(get_db)):
+    for key in DEFAULT_SETTINGS:
+        row = db.get(Setting, key)
+        if row is not None:
+            db.delete(row)
+    db.commit()
+    return load_settings(db)
+
+
+@app.get("/logs", response_model=list[LogOut])
+def get_logs(limit: int = Query(20, ge=1, le=200), db: Session = Depends(get_db)):
+    return db.scalars(
+        select(RequestLog).order_by(RequestLog.id.desc()).limit(limit)
+    ).all()
+
 
 @app.post("/chats", response_model=ChatOut)
 def create_chat(data: ChatCreate, db: Session = Depends(get_db)):
@@ -91,7 +171,7 @@ def list_chats(db: Session = Depends(get_db)):
 def get_messages(chat_id: int, db: Session = Depends(get_db)):
     chat = db.get(Chat, chat_id)
     if chat is None:
-        raise HTTPException(status_code=404, detail="Чат не найден")
+        raise HTTPException(status_code=404, detail="Chat not found")
     return chat.messages
 
 
@@ -99,17 +179,14 @@ def get_messages(chat_id: int, db: Session = Depends(get_db)):
 def delete_chat(chat_id: int, db: Session = Depends(get_db)):
     chat = db.get(Chat, chat_id)
     if chat is None:
-        raise HTTPException(status_code=404, detail="Чат не найден")
+        raise HTTPException(status_code=404, detail="Chat not found")
     db.delete(chat)
     db.commit()
     return {"deleted": chat_id}
 
 
-# ---------- вопрос модели ----------
-
 @app.post("/ask", response_model=AskResponse)
 def ask(request: AskRequest, db: Session = Depends(get_db)):
-    # 1. Находим чат или создаём новый
     if not request.chat_id:
         chat = Chat(title=request.question[:50])
         db.add(chat)
@@ -118,9 +195,8 @@ def ask(request: AskRequest, db: Session = Depends(get_db)):
     else:
         chat = db.get(Chat, request.chat_id)
         if chat is None:
-            raise HTTPException(status_code=404, detail="Чат не найден")
+            raise HTTPException(status_code=404, detail="Chat not found")
 
-    # 2. Берём последние сообщения чата в правильном порядке
     history = db.scalars(
         select(Message)
         .where(Message.chat_id == chat.id)
@@ -129,10 +205,13 @@ def ask(request: AskRequest, db: Session = Depends(get_db)):
     ).all()
     history.reverse()
 
-    messages = [{"role": m.role, "content": m.content} for m in history]
+    messages = []
+    system_prompt = build_system_prompt(load_settings(db))
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.extend({"role": m.role, "content": m.content} for m in history)
     messages.append({"role": "user", "content": request.question})
 
-    # 3. Отправляем модели и замеряем время
     started = time.perf_counter()
     try:
         completion = client.chat.completions.create(messages=messages, model=MODEL)
@@ -148,13 +227,12 @@ def ask(request: AskRequest, db: Session = Depends(get_db)):
             )
         )
         db.commit()
-        raise HTTPException(status_code=502, detail="Ошибка при обращении к модели")
+        raise HTTPException(status_code=502, detail="Model request failed")
     duration_ms = int((time.perf_counter() - started) * 1000)
 
     answer = completion.choices[0].message.content
     usage = completion.usage
 
-    # 4. Сохраняем вопрос, ответ и запись в журнал
     db.add(Message(chat_id=chat.id, role="user", content=request.question))
     db.add(
         Message(

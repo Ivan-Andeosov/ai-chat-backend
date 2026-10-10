@@ -12,7 +12,6 @@ def utcnow() -> datetime:
 
 class Setting(Base):
 
-
     __tablename__ = "settings"
 
     key: Mapped[str] = mapped_column(String(100), primary_key=True)
@@ -35,11 +34,10 @@ class ApiKey(Base):
 
 class Chat(Base):
 
-
     __tablename__ = "chats"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    title: Mapped[str] = mapped_column(String(200), default="Новый чат")
+    title: Mapped[str] = mapped_column(String(200), default="New chat")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )
@@ -47,12 +45,14 @@ class Chat(Base):
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
 
+
     messages: Mapped[list["Message"]] = relationship(
         back_populates="chat",
         cascade="all, delete-orphan",
         passive_deletes=True,
         order_by="Message.id",
     )
+
     request_logs: Mapped[list["RequestLog"]] = relationship(
         back_populates="chat",
         passive_deletes=True,
@@ -67,7 +67,7 @@ class Message(Base):
     chat_id: Mapped[int] = mapped_column(
         ForeignKey("chats.id", ondelete="CASCADE"), index=True
     )
-    role: Mapped[str] = mapped_column(String(20))  # "user" або "assistant"
+    role: Mapped[str] = mapped_column(String(20))  # "user" или "assistant"
     content: Mapped[str] = mapped_column(Text)
     provider: Mapped[str | None] = mapped_column(String(50), default=None)
     model: Mapped[str | None] = mapped_column(String(100), default=None)

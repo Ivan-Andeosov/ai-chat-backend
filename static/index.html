@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Чат</title>
+<title>Chat</title>
 <style>
 :root {
   --paper: #f6f7f9;
@@ -415,6 +415,126 @@ button, textarea {
   cursor: default;
 }
 
+.side-foot {
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.settings-btn {
+  width: 100%;
+  padding: 9px 12px;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-btn:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+dialog {
+  width: min(520px, 94vw);
+  max-height: 92dvh;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--ink);
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px;
+}
+
+.dialog-body h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: inherit;
+  font: inherit;
+}
+
+.field textarea {
+  min-height: 130px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.dialog-error {
+  margin: 0;
+  color: var(--danger);
+}
+
+.dialog-error:empty {
+  display: none;
+}
+
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btn {
+  padding: 9px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn.primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+}
+
+.btn.ghost {
+  margin-right: auto;
+  color: var(--muted);
+  font-weight: 400;
+}
+
 .scrim {
   display: none;
 }
@@ -478,43 +598,226 @@ button, textarea {
 </head>
 <body>
 <div class="app" id="app">
-  <aside class="side" aria-label="Список чатов">
+  <aside class="side" aria-label="Chats" data-i18n-aria="chatList">
     <div class="side-head">
-      <button class="new-chat" id="newChat" type="button">Новый чат</button>
+      <button class="new-chat" id="newChat" type="button" data-i18n="newChat">New chat</button>
     </div>
     <ul class="chat-list" id="chatList"></ul>
+    <div class="side-foot">
+      <button class="settings-btn" id="settingsBtn" type="button" data-i18n="settings">Settings</button>
+    </div>
   </aside>
   <div class="scrim" id="scrim"></div>
   <main class="main">
     <header class="topbar">
-      <button class="menu-btn" id="menuBtn" type="button" aria-label="Открыть список чатов">Чаты</button>
-      <h1 class="title" id="title">Новый чат</h1>
+      <button class="menu-btn" id="menuBtn" type="button" aria-label="Open chat list" data-i18n-aria="openChats" data-i18n="chats">Chats</button>
+      <h1 class="title" id="title">New chat</h1>
     </header>
     <div class="scroller" id="scroller">
       <div class="empty" id="empty">
-        <h2>Задайте первый вопрос</h2>
-        <p>Чат сохранится автоматически, и модель будет помнить его историю.</p>
+        <h2 id="greeting">Ask your first question</h2>
+        <p data-i18n="emptyText">The chat is saved automatically, and the model remembers its history.</p>
       </div>
       <div class="thread" id="thread" aria-live="polite"></div>
     </div>
     <div class="composer">
       <div class="composer-inner">
-        <textarea class="input" id="input" rows="1" placeholder="Напишите сообщение. Enter отправляет, Shift+Enter переносит строку." aria-label="Сообщение"></textarea>
-        <button class="send" id="send" type="button">Отправить</button>
+        <textarea class="input" id="input" rows="1" placeholder="Write a message." data-i18n-placeholder="placeholder" aria-label="Message" data-i18n-aria="messageLabel"></textarea>
+        <button class="send" id="send" type="button" data-i18n="send">Send</button>
       </div>
     </div>
   </main>
 </div>
+<dialog id="settingsDialog" aria-labelledby="settingsTitle">
+  <div class="dialog-body">
+    <h2 id="settingsTitle" data-i18n="settingsTitle">Chat settings</h2>
+    <div class="field">
+      <label for="fUi" data-i18n="fieldUi">Interface language</label>
+      <select id="fUi">
+        <option value="uk">Українська</option>
+        <option value="en">English</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="fName" data-i18n="fieldName">Your name</label>
+      <input id="fName" type="text" maxlength="100" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="fLang" data-i18n="fieldLang">Reply language</label>
+      <select id="fLang"></select>
+    </div>
+    <div class="field">
+      <label for="fPrompt" data-i18n="fieldPrompt">Instructions for the model</label>
+      <textarea id="fPrompt" maxlength="4000"></textarea>
+      <p class="hint" data-i18n="hint">Settings apply from the next message, including chats already started.</p>
+    </div>
+    <p class="dialog-error" id="settingsError"></p>
+    <div class="dialog-actions">
+      <button class="btn ghost" id="settingsReset" type="button" data-i18n="reset">Reset</button>
+      <button class="btn" id="settingsCancel" type="button" data-i18n="cancel">Cancel</button>
+      <button class="btn primary" id="settingsSave" type="button" data-i18n="save">Save</button>
+    </div>
+  </div>
+</dialog>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.2.5/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.6/purify.min.js"></script>
 <script>
-const state = { chats: [], activeId: null, busy: false };
+const state = { chats: [], activeId: null, busy: false, settings: null };
+
+const LANGUAGES = ['українська', 'English', 'polski', 'Deutsch', 'Français', 'Español'];
 
 const app = document.getElementById('app');
 const list = document.getElementById('chatList');
 const titleEl = document.getElementById('title');
 const scroller = document.getElementById('scroller');
 const empty = document.getElementById('empty');
+const greeting = document.getElementById('greeting');
+const dialog = document.getElementById('settingsDialog');
+const fName = document.getElementById('fName');
+const fLang = document.getElementById('fLang');
+const fPrompt = document.getElementById('fPrompt');
+const settingsError = document.getElementById('settingsError');
+const fUi = document.getElementById('fUi');
+
+const I18N = {
+  uk: {
+    pageTitle: 'Чат',
+    chatList: 'Список чатів',
+    openChats: 'Відкрити список чатів',
+    chats: 'Чати',
+    newChat: 'Новий чат',
+    settings: 'Налаштування',
+    emptyTitle: 'Поставте перше запитання',
+    greetingName: 'Привіт, {name}. Поставте перше запитання',
+    emptyText: 'Чат зберігається автоматично, а модель пам’ятає його історію.',
+    placeholder: 'Напишіть повідомлення. Enter надсилає, Shift+Enter переносить рядок.',
+    messageLabel: 'Повідомлення',
+    send: 'Надіслати',
+    pending: 'Модель відповідає…',
+    copy: 'Копіювати',
+    copied: 'Скопійовано',
+    deleteChat: 'Видалити чат «{title}»',
+    confirmDelete: 'Видалити чат і всю його історію?',
+    settingsTitle: 'Налаштування чату',
+    fieldUi: 'Мова інтерфейсу',
+    fieldName: 'Ваше ім’я',
+    fieldLang: 'Мова відповідей',
+    langAuto: 'Як у моєму запитанні',
+    fieldPrompt: 'Інструкція для моделі',
+    hint: 'Налаштування діють з наступного повідомлення, зокрема в уже розпочатих чатах.',
+    reset: 'Скинути',
+    cancel: 'Скасувати',
+    save: 'Зберегти',
+    confirmReset: 'Повернути ім’я, мову та інструкцію до значень із chat_settings.py?',
+    err502: 'Модель не відповіла. Перевірте назву моделі в chat_settings.py і ключ у .env. Причину записано в журнал: відкрийте адресу /logs і знайдіть останній запис зі статусом error.',
+    err404: 'Чат не знайдено. Відкрийте інший чат або створіть новий.',
+    errNet: 'Немає зв’язку із сервером. Перевірте, що його запущено.',
+    errGeneric: 'Помилка {status}.',
+    errLoad: 'Не вдалося завантажити історію.',
+    errDelete: 'Не вдалося видалити чат.',
+    errSave: 'Не вдалося зберегти налаштування.',
+    errReset: 'Не вдалося скинути налаштування.'
+  },
+  en: {
+    pageTitle: 'Chat',
+    chatList: 'Chats',
+    openChats: 'Open chat list',
+    chats: 'Chats',
+    newChat: 'New chat',
+    settings: 'Settings',
+    emptyTitle: 'Ask your first question',
+    greetingName: 'Hi, {name}. Ask your first question',
+    emptyText: 'The chat is saved automatically, and the model remembers its history.',
+    placeholder: 'Write a message. Enter sends, Shift+Enter adds a new line.',
+    messageLabel: 'Message',
+    send: 'Send',
+    pending: 'The model is replying…',
+    copy: 'Copy',
+    copied: 'Copied',
+    deleteChat: 'Delete chat "{title}"',
+    confirmDelete: 'Delete this chat and its whole history?',
+    settingsTitle: 'Chat settings',
+    fieldUi: 'Interface language',
+    fieldName: 'Your name',
+    fieldLang: 'Reply language',
+    langAuto: 'Same as my question',
+    fieldPrompt: 'Instructions for the model',
+    hint: 'Settings apply from the next message, including chats already started.',
+    reset: 'Reset',
+    cancel: 'Cancel',
+    save: 'Save',
+    confirmReset: 'Restore the name, language and instructions to the defaults from chat_settings.py?',
+    err502: 'The model did not reply. Check the model name in chat_settings.py and the key in .env. The cause is in the log: open /logs and find the latest entry with status error.',
+    err404: 'Chat not found. Open another chat or start a new one.',
+    errNet: 'Cannot reach the server. Check that it is running.',
+    errGeneric: 'Error {status}.',
+    errLoad: 'Could not load the chat history.',
+    errDelete: 'Could not delete the chat.',
+    errSave: 'Could not save the settings.',
+    errReset: 'Could not reset the settings.'
+  }
+};
+
+function detectLang() {
+  let saved = null;
+  try {
+    saved = localStorage.getItem('ui_lang');
+  } catch (error) {
+    saved = null;
+  }
+  if (saved === 'uk' || saved === 'en') return saved;
+  return (navigator.language || '').toLowerCase().startsWith('uk') ? 'uk' : 'en';
+}
+
+let lang = detectLang();
+
+function t(key, vars) {
+  let text = (I18N[lang] && I18N[lang][key]) || I18N.en[key] || key;
+  if (vars) {
+    Object.keys(vars).forEach((name) => {
+      text = text.split('{' + name + '}').join(vars[name]);
+    });
+  }
+  return text;
+}
+
+function updateGreeting() {
+  const name = state.settings && state.settings.user_name;
+  greeting.textContent = name ? t('greetingName', { name }) : t('emptyTitle');
+}
+
+function applyI18n() {
+  document.documentElement.lang = lang;
+  document.title = t('pageTitle');
+  document.querySelectorAll('[data-i18n]').forEach((node) => {
+    node.textContent = t(node.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach((node) => {
+    node.placeholder = t(node.dataset.i18nPlaceholder);
+  });
+  document.querySelectorAll('[data-i18n-aria]').forEach((node) => {
+    node.setAttribute('aria-label', t(node.dataset.i18nAria));
+  });
+  document.querySelectorAll('.copy').forEach((node) => {
+    node.textContent = t('copy');
+  });
+  document.querySelectorAll('.pending').forEach((node) => {
+    node.textContent = t('pending');
+  });
+  updateGreeting();
+}
+
+function setLang(value) {
+  lang = value === 'uk' ? 'uk' : 'en';
+  try {
+    localStorage.setItem('ui_lang', lang);
+  } catch (error) {
+    console.warn(error);
+  }
+  applyI18n();
+  renderChats();
+  updateTitle();
+}
 const thread = document.getElementById('thread');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('send');
@@ -529,13 +832,7 @@ function el(tag, className, text) {
 async function api(path, options) {
   const response = await fetch(path, options);
   if (!response.ok) {
-    let detail = '';
-    try {
-      detail = (await response.json()).detail;
-    } catch (e) {
-      detail = '';
-    }
-    const error = new Error(typeof detail === 'string' && detail ? detail : 'Ошибка ' + response.status);
+    const error = new Error('HTTP ' + response.status);
     error.status = response.status;
     throw error;
   }
@@ -543,16 +840,10 @@ async function api(path, options) {
 }
 
 function errorText(error) {
-  if (error.status === 502) {
-    return 'Модель не ответила. Проверьте название модели в main.py и ключ в .env. Подробности записаны в таблицу request_logs.';
-  }
-  if (error.status === 404) {
-    return 'Чат не найден. Откройте другой чат или создайте новый.';
-  }
-  if (error instanceof TypeError) {
-    return 'Нет связи с сервером. Проверьте, что он запущен.';
-  }
-  return error.message;
+  if (error.status === 502) return t('err502');
+  if (error.status === 404) return t('err404');
+  if (error instanceof TypeError) return t('errNet');
+  return t('errGeneric', { status: error.status || '' });
 }
 
 function scrollDown() {
@@ -579,14 +870,14 @@ function closeSide() {
 
 function copyText(text, button) {
   navigator.clipboard.writeText(text).then(() => {
-    button.textContent = 'Скопировано';
-    setTimeout(() => { button.textContent = 'Копировать'; }, 1500);
+    button.textContent = t('copied');
+    setTimeout(() => { button.textContent = t('copy'); }, 1500);
   });
 }
 
 function wrapCode(pre) {
   const wrap = el('div', 'code');
-  const copy = el('button', 'copy', 'Копировать');
+  const copy = el('button', 'copy', t('copy'));
   copy.type = 'button';
   copy.addEventListener('click', () => copyText(pre.textContent, copy));
   pre.replaceWith(wrap);
@@ -647,7 +938,7 @@ function showError(text) {
 
 function updateTitle() {
   const chat = state.chats.find((item) => item.id === state.activeId);
-  titleEl.textContent = chat ? chat.title : 'Новый чат';
+  titleEl.textContent = chat ? chat.title : t('newChat');
 }
 
 function renderChats() {
@@ -663,7 +954,7 @@ function renderChats() {
     });
     const del = el('button', 'chat-del', '×');
     del.type = 'button';
-    del.setAttribute('aria-label', 'Удалить чат «' + chat.title + '»');
+    del.setAttribute('aria-label', t('deleteChat', { title: chat.title }));
     del.addEventListener('click', () => removeChat(chat.id));
     item.append(open, del);
     list.appendChild(item);
@@ -696,17 +987,17 @@ async function selectChat(id) {
     setEmpty(messages.length === 0);
   } catch (error) {
     setEmpty(false);
-    showError('Не удалось загрузить историю. ' + errorText(error));
+    showError(t('errLoad') + ' ' + errorText(error));
   }
   input.focus();
 }
 
 async function removeChat(id) {
-  if (!confirm('Удалить чат и всю его историю?')) return;
+  if (!confirm(t('confirmDelete'))) return;
   try {
     await api('/chats/' + id, { method: 'DELETE' });
   } catch (error) {
-    showError('Не удалось удалить чат. ' + errorText(error));
+    showError(t('errDelete') + ' ' + errorText(error));
     return;
   }
   state.chats = state.chats.filter((chat) => chat.id !== id);
@@ -725,7 +1016,7 @@ async function send() {
   appendMessage('user', question);
   input.value = '';
   autosize();
-  const pending = el('div', 'pending', 'Модель отвечает…');
+  const pending = el('div', 'pending', t('pending'));
   thread.appendChild(pending);
   scrollDown();
   const payload = { question };
@@ -757,6 +1048,13 @@ document.getElementById('newChat').addEventListener('click', () => {
 document.getElementById('menuBtn').addEventListener('click', () => app.classList.add('open'));
 document.getElementById('scrim').addEventListener('click', closeSide);
 sendBtn.addEventListener('click', send);
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
+document.getElementById('settingsSave').addEventListener('click', saveSettings);
+document.getElementById('settingsReset').addEventListener('click', resetSettings);
+document.getElementById('settingsCancel').addEventListener('click', () => dialog.close());
+dialog.addEventListener('click', (event) => {
+  if (event.target === dialog) dialog.close();
+});
 input.addEventListener('input', autosize);
 input.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
@@ -765,7 +1063,76 @@ input.addEventListener('keydown', (event) => {
   }
 });
 
+function applySettings(data) {
+  state.settings = data;
+  updateGreeting();
+}
+
+async function loadSettings() {
+  try {
+    applySettings(await api('/settings'));
+  } catch (error) {
+    return;
+  }
+}
+
+function fillLanguages(selected) {
+  fLang.replaceChildren();
+  const values = !selected || LANGUAGES.includes(selected) ? LANGUAGES : [...LANGUAGES, selected];
+  const auto = el('option', '', t('langAuto'));
+  auto.value = '';
+  fLang.appendChild(auto);
+  values.forEach((value) => {
+    const option = el('option', '', value);
+    option.value = value;
+    fLang.appendChild(option);
+  });
+  fLang.value = selected || '';
+}
+
+function openSettings() {
+  const current = state.settings || { user_name: '', language: '', system_prompt: '' };
+  fName.value = current.user_name;
+  fUi.value = lang;
+  fillLanguages(current.language);
+  fPrompt.value = current.system_prompt;
+  settingsError.textContent = '';
+  closeSide();
+  dialog.showModal();
+}
+
+async function saveSettings() {
+  setLang(fUi.value);
+  try {
+    const data = await api('/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_name: fName.value.trim(),
+        language: fLang.value,
+        system_prompt: fPrompt.value.trim()
+      })
+    });
+    applySettings(data);
+    dialog.close();
+  } catch (error) {
+    settingsError.textContent = t('errSave') + ' ' + errorText(error);
+  }
+}
+
+async function resetSettings() {
+  if (!confirm(t('confirmReset'))) return;
+  try {
+    applySettings(await api('/settings', { method: 'DELETE' }));
+    dialog.close();
+  } catch (error) {
+    settingsError.textContent = t('errReset') + ' ' + errorText(error);
+  }
+}
+
 (async function init() {
+  applyI18n();
+  await loadSettings();
   try {
     await refreshChats();
     if (state.chats.length) {
