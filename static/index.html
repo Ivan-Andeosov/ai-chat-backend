@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Чат</title>
+<style>
+:root {
+  --paper: #f6f7f9;
+  --surface: #ffffff;
+  --side: #eceef2;
+  --ink: #1b2130;
+  --muted: #667085;
+  --line: #d9dde5;
+  --accent: #2f4bdb;
+  --accent-ink: #ffffff;
+  --tint: #e8ecfd;
+  --danger: #b42318;
+  --code-bg: #121826;
+  --code-ink: #e6eaf5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #12151c;
+    --surface: #181c25;
+    --side: #0e1117;
+    --ink: #e8ebf2;
+    --muted: #8b93a7;
+    --line: #2a3040;
+    --accent: #7b93ff;
+    --accent-ink: #0e1117;
+    --tint: #232a45;
+    --danger: #ff8a7a;
+    --code-bg: #0b0e14;
+    --code-ink: #e6eaf5;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+button, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  height: 100dvh;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--side);
+  border-right: 1px solid var(--line);
+}
+
+.side-head {
+  padding: 16px;
+}
+
+.new-chat {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.new-chat:hover {
+  border-color: var(--accent);
+}
+
+.chat-list {
+  flex: 1;
+  margin: 0;
+  padding: 0 8px 16px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.chat-item {
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+}
+
+.chat-item:hover {
+  background: var(--surface);
+}
+
+.chat-item.active {
+  background: var(--tint);
+}
+
+.chat-open {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  background: none;
+  border: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.chat-del {
+  width: 32px;
+  height: 32px;
+  margin-right: 4px;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.chat-item:hover .chat-del,
+.chat-item.active .chat-del,
+.chat-del:focus-visible {
+  opacity: 1;
+}
+
+.chat-del:hover {
+  color: var(--danger);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.menu-btn {
+  display: none;
+  padding: 6px 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.title {
+  margin: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scroller {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.empty {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 18vh 24px 0;
+}
+
+.empty h2 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.empty p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 28px 24px 12px;
+}
+
+.msg-user {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: 10px 14px;
+  background: var(--tint);
+  border-radius: 14px 14px 4px 14px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.msg-bot {
+  padding-left: 16px;
+  border-left: 2px solid var(--accent);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.msg-bot .text {
+  white-space: pre-wrap;
+}
+
+.md > :first-child {
+  margin-top: 0;
+}
+
+.md > :last-child {
+  margin-bottom: 0;
+}
+
+.md p,
+.md ul,
+.md ol,
+.md blockquote {
+  margin: 0 0 12px;
+}
+
+.md h1,
+.md h2,
+.md h3,
+.md h4 {
+  margin: 18px 0 8px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.md h1 { font-size: 22px; }
+.md h2 { font-size: 19px; }
+.md h3 { font-size: 17px; }
+.md h4 { font-size: 16px; }
+
+.md ul,
+.md ol {
+  padding-left: 24px;
+}
+
+.md li + li {
+  margin-top: 4px;
+}
+
+.md a {
+  color: var(--accent);
+}
+
+.md code {
+  padding: 2px 6px;
+  background: var(--tint);
+  border-radius: 5px;
+  font: 0.9em "Cascadia Code", Consolas, "Courier New", monospace;
+}
+
+.md pre code {
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  font: inherit;
+}
+
+.md table {
+  display: block;
+  max-width: 100%;
+  margin: 0 0 12px;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.md th,
+.md td {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.md th {
+  background: var(--tint);
+}
+
+.md blockquote {
+  padding-left: 12px;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+}
+
+.md hr {
+  margin: 16px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.code {
+  position: relative;
+  margin: 12px 0;
+  background: var(--code-bg);
+  border-radius: 10px;
+  color: var(--code-ink);
+}
+
+.code pre {
+  margin: 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  font: 13.5px/1.55 "Cascadia Code", Consolas, "Courier New", monospace;
+}
+
+.copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 9px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 0;
+  border-radius: 6px;
+  color: var(--code-ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.copy:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.pending {
+  color: var(--muted);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.msg-error {
+  padding-left: 16px;
+  border-left: 2px solid var(--danger);
+  color: var(--danger);
+}
+
+@keyframes pulse {
+  50% { opacity: 0.45; }
+}
+
+.composer {
+  padding: 14px 24px 18px;
+  border-top: 1px solid var(--line);
+}
+
+.composer-inner {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.input {
+  flex: 1;
+  min-height: 46px;
+  max-height: 200px;
+  padding: 11px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  line-height: 1.4;
+  resize: none;
+}
+
+.send {
+  height: 46px;
+  padding: 0 18px;
+  background: var(--accent);
+  border: 0;
+  border-radius: 12px;
+  color: var(--accent-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.send:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.scrim {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .side {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 20;
+    width: min(300px, 86vw);
+    transform: translateX(-100%);
+    transition: transform 0.2s;
+  }
+
+  .app.open .side {
+    transform: none;
+  }
+
+  .app.open .scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  .menu-btn {
+    display: inline-flex;
+  }
+
+  .topbar {
+    padding: 12px 16px;
+  }
+
+  .thread {
+    padding: 20px 16px 12px;
+  }
+
+  .composer {
+    padding: 12px 16px 14px;
+  }
+
+  .empty {
+    padding: 12vh 16px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side" aria-label="Список чатов">
+    <div class="side-head">
+      <button class="new-chat" id="newChat" type="button">Новый чат</button>
+    </div>
+    <ul class="chat-list" id="chatList"></ul>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+  <main class="main">
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn" type="button" aria-label="Открыть список чатов">Чаты</button>
+      <h1 class="title" id="title">Новый чат</h1>
+    </header>
+    <div class="scroller" id="scroller">
+      <div class="empty" id="empty">
+        <h2>Задайте первый вопрос</h2>
+        <p>Чат сохранится автоматически, и модель будет помнить его историю.</p>
+      </div>
+      <div class="thread" id="thread" aria-live="polite"></div>
+    </div>
+    <div class="composer">
+      <div class="composer-inner">
+        <textarea class="input" id="input" rows="1" placeholder="Напишите сообщение. Enter отправляет, Shift+Enter переносит строку." aria-label="Сообщение"></textarea>
+        <button class="send" id="send" type="button">Отправить</button>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.2.5/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.6/purify.min.js"></script>
+<script>
+const state = { chats: [], activeId: null, busy: false };
+
+const app = document.getElementById('app');
+const list = document.getElementById('chatList');
+const titleEl = document.getElementById('title');
+const scroller = document.getElementById('scroller');
+const empty = document.getElementById('empty');
+const thread = document.getElementById('thread');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('send');
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+async function api(path, options) {
+  const response = await fetch(path, options);
+  if (!response.ok) {
+    let detail = '';
+    try {
+      detail = (await response.json()).detail;
+    } catch (e) {
+      detail = '';
+    }
+    const error = new Error(typeof detail === 'string' && detail ? detail : 'Ошибка ' + response.status);
+    error.status = response.status;
+    throw error;
+  }
+  return response.json();
+}
+
+function errorText(error) {
+  if (error.status === 502) {
+    return 'Модель не ответила. Проверьте название модели в main.py и ключ в .env. Подробности записаны в таблицу request_logs.';
+  }
+  if (error.status === 404) {
+    return 'Чат не найден. Откройте другой чат или создайте новый.';
+  }
+  if (error instanceof TypeError) {
+    return 'Нет связи с сервером. Проверьте, что он запущен.';
+  }
+  return error.message;
+}
+
+function scrollDown() {
+  scroller.scrollTop = scroller.scrollHeight;
+}
+
+function setEmpty(visible) {
+  empty.hidden = !visible;
+}
+
+function setBusy(value) {
+  state.busy = value;
+  sendBtn.disabled = value;
+}
+
+function autosize() {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+}
+
+function closeSide() {
+  app.classList.remove('open');
+}
+
+function copyText(text, button) {
+  navigator.clipboard.writeText(text).then(() => {
+    button.textContent = 'Скопировано';
+    setTimeout(() => { button.textContent = 'Копировать'; }, 1500);
+  });
+}
+
+function wrapCode(pre) {
+  const wrap = el('div', 'code');
+  const copy = el('button', 'copy', 'Копировать');
+  copy.type = 'button';
+  copy.addEventListener('click', () => copyText(pre.textContent, copy));
+  pre.replaceWith(wrap);
+  wrap.append(copy, pre);
+}
+
+function renderPlain(box, text) {
+  text.split('```').forEach((part, index) => {
+    if (index % 2 === 0) {
+      const plain = part.replace(/^\n+|\n+$/g, '');
+      if (plain) box.appendChild(el('div', 'text', plain));
+      return;
+    }
+    const body = (part.includes('\n') ? part.replace(/^[^\n]*\n/, '') : part).replace(/\n$/, '');
+    const pre = el('pre');
+    pre.appendChild(el('code', '', body));
+    box.appendChild(pre);
+    wrapCode(pre);
+  });
+}
+
+function renderMarkdown(box, text) {
+  const body = el('div', 'md');
+  body.innerHTML = DOMPurify.sanitize(marked.parse(text, { gfm: true }));
+  body.querySelectorAll('pre').forEach((pre) => wrapCode(pre));
+  body.querySelectorAll('a').forEach((link) => {
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+  });
+  box.appendChild(body);
+}
+
+function renderBot(text) {
+  const box = el('div', 'msg-bot');
+  if (window.marked && window.DOMPurify) {
+    try {
+      renderMarkdown(box, text);
+      return box;
+    } catch (error) {
+      box.replaceChildren();
+    }
+  }
+  renderPlain(box, text);
+  return box;
+}
+
+function appendMessage(role, content) {
+  const node = role === 'user' ? el('div', 'msg-user', content) : renderBot(content);
+  thread.appendChild(node);
+  scrollDown();
+  return node;
+}
+
+function showError(text) {
+  thread.appendChild(el('div', 'msg-error', text));
+  scrollDown();
+}
+
+function updateTitle() {
+  const chat = state.chats.find((item) => item.id === state.activeId);
+  titleEl.textContent = chat ? chat.title : 'Новый чат';
+}
+
+function renderChats() {
+  list.replaceChildren();
+  state.chats.forEach((chat) => {
+    const item = el('li', 'chat-item' + (chat.id === state.activeId ? ' active' : ''));
+    const open = el('button', 'chat-open', chat.title);
+    open.type = 'button';
+    open.title = chat.title;
+    open.addEventListener('click', () => {
+      closeSide();
+      selectChat(chat.id);
+    });
+    const del = el('button', 'chat-del', '×');
+    del.type = 'button';
+    del.setAttribute('aria-label', 'Удалить чат «' + chat.title + '»');
+    del.addEventListener('click', () => removeChat(chat.id));
+    item.append(open, del);
+    list.appendChild(item);
+  });
+}
+
+async function refreshChats() {
+  state.chats = await api('/chats');
+  renderChats();
+  updateTitle();
+}
+
+function newChat() {
+  state.activeId = null;
+  thread.replaceChildren();
+  setEmpty(true);
+  renderChats();
+  updateTitle();
+  input.focus();
+}
+
+async function selectChat(id) {
+  state.activeId = id;
+  renderChats();
+  updateTitle();
+  thread.replaceChildren();
+  try {
+    const messages = await api('/chats/' + id + '/messages');
+    messages.forEach((message) => appendMessage(message.role, message.content));
+    setEmpty(messages.length === 0);
+  } catch (error) {
+    setEmpty(false);
+    showError('Не удалось загрузить историю. ' + errorText(error));
+  }
+  input.focus();
+}
+
+async function removeChat(id) {
+  if (!confirm('Удалить чат и всю его историю?')) return;
+  try {
+    await api('/chats/' + id, { method: 'DELETE' });
+  } catch (error) {
+    showError('Не удалось удалить чат. ' + errorText(error));
+    return;
+  }
+  state.chats = state.chats.filter((chat) => chat.id !== id);
+  if (state.activeId === id) {
+    newChat();
+  } else {
+    renderChats();
+  }
+}
+
+async function send() {
+  const question = input.value.trim();
+  if (!question || state.busy) return;
+  setBusy(true);
+  setEmpty(false);
+  appendMessage('user', question);
+  input.value = '';
+  autosize();
+  const pending = el('div', 'pending', 'Модель отвечает…');
+  thread.appendChild(pending);
+  scrollDown();
+  const payload = { question };
+  if (state.activeId) payload.chat_id = state.activeId;
+  try {
+    const data = await api('/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    pending.remove();
+    appendMessage('assistant', data.answer);
+    state.activeId = data.chat_id;
+    await refreshChats();
+  } catch (error) {
+    pending.remove();
+    showError(errorText(error));
+    refreshChats().catch(() => {});
+  } finally {
+    setBusy(false);
+    input.focus();
+  }
+}
+
+document.getElementById('newChat').addEventListener('click', () => {
+  closeSide();
+  newChat();
+});
+document.getElementById('menuBtn').addEventListener('click', () => app.classList.add('open'));
+document.getElementById('scrim').addEventListener('click', closeSide);
+sendBtn.addEventListener('click', send);
+input.addEventListener('input', autosize);
+input.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    send();
+  }
+});
+
+(async function init() {
+  try {
+    await refreshChats();
+    if (state.chats.length) {
+      await selectChat(state.chats[0].id);
+    } else {
+      newChat();
+    }
+  } catch (error) {
+    newChat();
+    showError(errorText(error));
+  }
+})();
+</script>
+</body>
+</html>
