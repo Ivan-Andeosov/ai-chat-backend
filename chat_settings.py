@@ -1,11 +1,11 @@
-USER_NAME = "Иван"
+USER_NAME = "User"
 
 LANGUAGE = "english"
 
 SYSTEM_PROMPT = (
-    "Ты помощник по программированию. "
-    "Отвечай кратко и по делу. "
-    "Код оформляй блоками и добавляй к нему короткое объяснение."
+    "You are a programming assistant. "
+    "Answer concisely and to the point. "
+    "Put code in code blocks and add a short explanation after it."
 )
 
 MODEL = "openai/gpt-oss-120b"
