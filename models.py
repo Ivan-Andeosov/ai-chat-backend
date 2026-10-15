@@ -67,7 +67,7 @@ class Message(Base):
     chat_id: Mapped[int] = mapped_column(
         ForeignKey("chats.id", ondelete="CASCADE"), index=True
     )
-    role: Mapped[str] = mapped_column(String(20))  # "user" или "assistant"
+    role: Mapped[str] = mapped_column(String(20))  # "user" Або "assistant"
     content: Mapped[str] = mapped_column(Text)
     provider: Mapped[str | None] = mapped_column(String(50), default=None)
     model: Mapped[str | None] = mapped_column(String(100), default=None)
@@ -91,7 +91,7 @@ class RequestLog(Base):
     prompt_tokens: Mapped[int | None] = mapped_column(default=None)
     completion_tokens: Mapped[int | None] = mapped_column(default=None)
     total_tokens: Mapped[int | None] = mapped_column(default=None)
-    status: Mapped[str] = mapped_column(String(20))  # "success" или "error"
+    status: Mapped[str] = mapped_column(String(20))  # "success" або "error"
     duration_ms: Mapped[int | None] = mapped_column(default=None)
     error_message: Mapped[str | None] = mapped_column(Text, default=None)
     created_at: Mapped[datetime] = mapped_column(
